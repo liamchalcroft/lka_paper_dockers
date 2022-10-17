@@ -1,0 +1,14 @@
+
+evalutils==0.3.1
+setuptools
+
+scikit-learn==0.24.2
+scipy
+
+monai
+nibabel
+git+https://github.com/NVIDIA/dllogger
+git+https://github.com/lucasb-eyer/pydensecrf.git
+pytorch-lightning
+scikit-image
+rich
