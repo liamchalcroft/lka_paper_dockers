@@ -69,9 +69,7 @@ class ploras():
 
 
         self.model_paths = [
-            '/opt/algorithm/checkpoints/0/best.ckpt', '/opt/algorithm/checkpoints/1/best.ckpt', 
-            '/opt/algorithm/checkpoints/2/best.ckpt', '/opt/algorithm/checkpoints/3/best.ckpt', 
-            '/opt/algorithm/checkpoints/4/best.ckpt'
+            '/opt/algorithm/checkpoints/0/last.ckpt'
             ]
         self.args = []
         for i,pth in enumerate(self.model_paths):
@@ -265,7 +263,8 @@ class ploras():
         img_crf[img_crf > 255] = 255
         img_crf = np.asarray(img_crf, np.uint8)
         pred_crf = np.asarray(pred_crf, np.float32)
-        prediction = self.crf(img_crf, pred_crf)
+#        prediction = self.crf(img_crf, pred_crf)
+        prediction = pred_crf
         prediction = prediction[1]
         prediction = SimpleITK.GetImageFromArray(prediction)
 
@@ -281,8 +280,8 @@ class ploras():
 
         prediction = (prediction > 0.5)
 
-        prediction = remove_small_holes(prediction, 10, 1)
-        prediction = remove_small_objects(prediction, 2, 1)
+#        prediction = remove_small_holes(prediction, 10, 1)
+#        prediction = remove_small_objects(prediction, 2, 1)
 
         self.cleanup()
 
