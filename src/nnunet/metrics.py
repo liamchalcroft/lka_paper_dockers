@@ -47,7 +47,9 @@ class Dice(Metric):
 
     def compute_metric(self, p, y, metric_fn, best_metric, worst_metric):
         metric = metric_fn(p, y, include_background=self.brats)
-        metric = torch.nan_to_num(metric, nan=worst_metric, posinf=worst_metric, neginf=worst_metric)
+        metric = torch.nan_to_num(
+            metric, nan=worst_metric, posinf=worst_metric, neginf=worst_metric
+        )
         metric = do_metric_reduction(metric, "mean_batch")[0]
 
         for i in range(self.n_class):

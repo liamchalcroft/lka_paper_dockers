@@ -119,7 +119,7 @@ class ploras:
             res_block=False,
             filters=None,
             num_units=2,
-            md_encoder=True,
+            md_encoder=False,
             md_decoder=False,
             shape=False,
             paste=0,
@@ -132,7 +132,7 @@ class ploras:
             blend="gaussian",
             train_batches=0,
             test_batches=0,
-            swin=False,
+            swin=True,
             tpus=0,
         )
 

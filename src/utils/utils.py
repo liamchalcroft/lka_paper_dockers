@@ -35,7 +35,7 @@ def get_config_file(args):
     if args.config:
         # path = os.path.basename(args.config)
         task_code = get_task_code(args)
-        path = os.path.join('/home/lchalcroft/mdunet/data', task_code, "config.pkl")
+        path = os.path.join("/home/lchalcroft/mdunet/data", task_code, "config.pkl")
     elif args.data != "/data":
         path = os.path.join(args.data, "config.pkl")
     else:
@@ -45,9 +45,13 @@ def get_config_file(args):
 
 
 def set_cuda_devices(args):
-    assert args.gpus <= torch.cuda.device_count(), f"Requested {args.gpus} gpus, available {torch.cuda.device_count()}."
+    assert (
+        args.gpus <= torch.cuda.device_count()
+    ), f"Requested {args.gpus} gpus, available {torch.cuda.device_count()}."
     device_list = ",".join([str(i) for i in range(args.gpus)])
-    os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("CUDA_VISIBLE_DEVICES", device_list)
+    os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get(
+        "CUDA_VISIBLE_DEVICES", device_list
+    )
 
 
 def verify_ckpt_path(args):

@@ -30,7 +30,9 @@ class DLLogger:
     @rank_zero_only
     def _initialize_dllogger(self, log_dir, filename, append):
         backends = [
-            JSONStreamBackend(Verbosity.VERBOSE, os.path.join(log_dir, filename), append=append),
+            JSONStreamBackend(
+                Verbosity.VERBOSE, os.path.join(log_dir, filename), append=append
+            ),
             StdOutBackend(Verbosity.VERBOSE),
         ]
         logger.init(backends=backends)
@@ -80,7 +82,13 @@ class LoggingCallback(Callback):
             f"latency_{self.mode}_mean": _round3(timestamps_ms.mean()),
         }
         for level in [90, 95, 99]:
-            stats.update({f"latency_{self.mode}_{level}": _round3(np.percentile(timestamps_ms, level))})
+            stats.update(
+                {
+                    f"latency_{self.mode}_{level}": _round3(
+                        np.percentile(timestamps_ms, level)
+                    )
+                }
+            )
 
         return stats
 

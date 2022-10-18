@@ -22,7 +22,9 @@ from torch.nn.modules.loss import _Loss
 from monai.networks import one_hot
 from monai.utils import LossReduction, convert_data_type, optional_import
 
-distance_transform_edt, _ = optional_import("scipy.ndimage", name="distance_transform_edt")
+distance_transform_edt, _ = optional_import(
+    "scipy.ndimage", name="distance_transform_edt"
+)
 
 
 class ShapeDistLoss(_Loss):
@@ -66,9 +68,13 @@ class ShapeDistLoss(_Loss):
         """
         super().__init__(reduction=LossReduction(reduction).value)
         if other_act is not None and not callable(other_act):
-            raise TypeError(f"other_act must be None or callable but is {type(other_act).__name__}.")
+            raise TypeError(
+                f"other_act must be None or callable but is {type(other_act).__name__}."
+            )
         if int(sigmoid) + int(softmax) + int(other_act is not None) > 1:
-            raise ValueError("Incompatible values: more than 1 of [sigmoid=True, softmax=True, other_act is not None].")
+            raise ValueError(
+                "Incompatible values: more than 1 of [sigmoid=True, softmax=True, other_act is not None]."
+            )
         self.include_background = include_background
         self.to_onehot_y = to_onehot_y
         self.sigmoid = sigmoid
@@ -144,14 +150,18 @@ class ShapeDistLoss(_Loss):
 
         if not self.include_background:
             if n_pred_ch == 1:
-                warnings.warn("single channel prediction, `include_background=False` ignored.")
+                warnings.warn(
+                    "single channel prediction, `include_background=False` ignored."
+                )
             else:
                 # if skipping background, removing first channel
                 target = target[:, 1:]
                 input = input[:, 1:]
 
         if target.shape != input.shape:
-            raise AssertionError(f"ground truth has different shape ({target.shape}) from input ({input.shape})")
+            raise AssertionError(
+                f"ground truth has different shape ({target.shape}) from input ({input.shape})"
+            )
 
         distance_maps = torch.empty(size=target.size()).to(input.device)
 
@@ -170,6 +180,8 @@ class ShapeDistLoss(_Loss):
             broadcast_shape = list(f.shape[0:2]) + [1] * (len(input.shape) - 2)
             f = f.view(broadcast_shape)
         else:
-            raise ValueError(f'Unsupported reduction: {self.reduction}, available options are ["mean", "sum", "none"].')
+            raise ValueError(
+                f'Unsupported reduction: {self.reduction}, available options are ["mean", "sum", "none"].'
+            )
 
         return f
