@@ -120,7 +120,7 @@ class ploras:
             filters=None,
             num_units=2,
             md_encoder=True,
-            md_decoder=False,
+            md_decoder=True,
             shape=False,
             paste=0,
             data2d_dim=3,
