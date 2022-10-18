@@ -65,7 +65,9 @@ class ploras():
                                 min_fmap=4, deep_supr_num=2, res_block=False, filters=None, num_units=2, md_encoder=True, 
                                 md_decoder=False, shape=False, paste=0, data2d_dim=3, oversampling=0.4, overlap=0.5, 
                                 affinity='unique_contiguous', scheduler=False, optimizer='adam', blend='gaussian', 
-                                train_batches=0, test_batches=0)
+                                train_batches=0, test_batches=0,
+            swin=False,
+            tpus=0,)
 
 
         self.model_paths = [
