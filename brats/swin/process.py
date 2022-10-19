@@ -5,9 +5,9 @@ import json
 import os
 from pathlib import Path
 
-DEFAULT_INPUT_PATH = Path("/input")
-DEFAULT_ALGORITHM_OUTPUT_IMAGES_PATH = Path("/output/images/")
-DEFAULT_ALGORITHM_OUTPUT_FILE_PATH = Path("/output/results.json")
+DEFAULT_INPUT_PATH = Path("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde")
+DEFAULT_ALGORITHM_OUTPUT_IMAGES_PATH = Path("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde")
+DEFAULT_ALGORITHM_OUTPUT_FILE_PATH = Path("/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/tumour-segmentation/results.json")
 
 import torch
 from nnunet.nn_unet import NNUnet
@@ -24,6 +24,7 @@ from data_loading.data_module import DataModule
 from copy import deepcopy
 import shutil
 from skimage.morphology import remove_small_objects, remove_small_holes
+import pathlib
 
 import logging
 
@@ -38,16 +39,16 @@ class ploras:
         output_path: Path = DEFAULT_ALGORITHM_OUTPUT_IMAGES_PATH,
     ):
 
-        self.debug = False  # False for running the docker!
+        self.debug = True  # False for running the docker!
         if self.debug:
             self._input_path = Path(
-                "/home/lchalcroft/mdunet/miccai22_dockers/docker-isles/test/"
+                "/home/lchalcroft/mdunet/data/BraTS2021_val/images"
             )
             self._output_path = Path(
-                "/home/lchalcroft/mdunet/miccai22_dockers/docker-isles/output/"
+                "/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/tumour-segmentation"
             )
             self._algorithm_output_path = (
-                self._output_path / "stroke-lesion-segmentation"
+                self._output_path / "tumour-segmentation"
             )
             self._output_file = self._output_path / "results.json"
             self._case_results = []
@@ -67,11 +68,11 @@ class ploras:
 
         args = SimpleNamespace(
             exec_mode="predict",
-            data="/opt/algorithm/data/15_3d/test",
-            results="/opt/algorithm/results",
-            config="/opt/algorithm/config/config.pkl",
+            data="/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/data/11_3d/test",
+            results="/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/results",
+            config="/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/configs/config.pkl",
             logname="ploras",
-            task="15",
+            task="11",
             gpus=1,
             nodes=1,
             learning_rate=0.0002,
@@ -80,9 +81,9 @@ class ploras:
             tta=tta,
             tb_logs=False,
             wandb_logs=False,
-            wandb_project="isles",
+            wandb_project="brats",
             brats=False,
-            deep_supervision=True,
+            deep_supervision=False,
             more_chn=False,
             invert_resampled_y=False,
             amp=True,
@@ -94,7 +95,7 @@ class ploras:
             skip_first_n_eval=500,
             val_epochs=10,
             ckpt_path=None,
-            ckpt_store_dir="/opt/algorithm/checkpoints/",
+            ckpt_store_dir="/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/checkpoints/",
             fold=0,
             patience=100,
             batch_size=4,
@@ -132,16 +133,16 @@ class ploras:
             tpus=0,
         )
 
-        self.model_paths = ["/opt/algorithm/checkpoints/0/last.ckpt"]
+        self.model_paths = ["/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/checkpoints/0/last.ckpt"]
         self.args = []
         for i, pth in enumerate(self.model_paths):
             ckpt = torch.load(pth, map_location=self.device)
             ckpt["hyper_parameters"]["args"] = deepcopy(args)
             ckpt["hyper_parameters"][
                 "args"
-            ].ckpt_store_dir = "/opt/algorithm/checkpoints/" + str(i)
+            ].ckpt_store_dir = "/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/checkpoints/" + str(i)
             ckpt["hyper_parameters"]["args"].ckpt_path = (
-                "/opt/algorithm/checkpoints/" + str(i) + "/best.ckpt"
+                "/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/checkpoints/" + str(i) + "/last.ckpt"
             )
             ckpt["hyper_parameters"]["args"].fold = i
             ckpt["hyper_parameters"]["args"].gpus = 1
@@ -197,35 +198,36 @@ class ploras:
         return out
 
     def nnunet_preprocess(self, image):
-        os.makedirs("/opt/algorithm/data/ISLES2022/imagesTs/", exist_ok=True)
+        os.makedirs(os.path.join("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde", "data/BraTS2021_train/imagesTs/"), exist_ok=True)
         SimpleITK.WriteImage(
-            image, str("/opt/algorithm/data/ISLES2022/imagesTs/ISLES2022_0001.nii.gz")
+            image,
+            str(os.path.join("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde", "data/BraTS2021_train/imagesTs/BraTS2021_0001.nii.gz")),
         )
         data_desc = {
             "description": "Stroke Lesion Segmentation",
-            "labels": {"0": "Background", "1": "Lesion"},
+            "labels": {"0": "background", "1": "edema", "2": "non-enhancing tumor", "3": "enhancing tumour"},
             "licence": "BLANK",
-            "modality": {"0": "ADC", "1": "DWI", "2": "FLAIR"},
-            "name": "ISLES2022",
+            "modality": {"0": "FLAIR", "1": "T1", "2": "T1CE", "3": "T2"},
+            "name": "BraTS2021_train",
             "numTest": 1,
             "numTraining": 0,
             "reference": "BLANK",
             "release": "BLANK",
             "tensorImageSize": "4D",
             "test": [
-                "/opt/algorithm/data/ISLES2022/imagesTs/ISLES2022_0001.nii.gz",
+                os.path.join("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde", "data/BraTS2021_train/imagesTs/BraTS2021_0001.nii.gz")
             ],
             "training": [],
         }
-        with open("/opt/algorithm/data/ISLES2022/dataset.json", "w") as f:
+        with open(os.path.join("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde", "data/BraTS2021_train/dataset.json"), "w") as f:
             json.dump(data_desc, f)
         args = SimpleNamespace(
-            data="/opt/algorithm/data",
-            results="/opt/algorithm/data",
+            data="/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/data",
+            results="/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/data",
             exec_mode="test",
-            ohe=False,
+            ohe=True,
             verbose=False,
-            task="15",
+            task="11",
             dim=3,
             n_jobs=1,
         )
@@ -261,7 +263,7 @@ class ploras:
             enable_progress_bar=False,
             enable_model_summary=False,
         )
-        save_dir = os.path.join("/opt/algorithm/prediction", str(args.fold))
+        save_dir = os.path.join("/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/prediction", str(args.fold))
         model.save_dir = save_dir
         os.makedirs(save_dir, exist_ok=True)
         model.args = args
@@ -274,212 +276,107 @@ class ploras:
 
     def nnunet_ensemble(self, paths, ref):
         preds = [np.load(f) for f in paths]
-        pred = np.mean(preds, 0)[1]
-        pred_image = SimpleITK.GetImageFromArray(pred)
+        pred = np.mean(preds, 0)
+        pred = np.transpose(pred, (1,2,3,0))
+        pred_image = SimpleITK.GetImageFromArray(pred, isVector=True)
         pred_image.SetOrigin(ref.GetOrigin())
         pred_image.SetSpacing(ref.GetSpacing())
         pred_image.SetDirection(ref.GetDirection())
         return pred_image
 
     def setup(self):
-        os.makedirs("/opt/algorithm/data", exist_ok=True)
-        os.makedirs("/opt/algorithm/results", exist_ok=True)
-        os.makedirs("/opt/algorithm/prediction", exist_ok=True)
+        os.makedirs("/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/data", exist_ok=True)
+        os.makedirs("/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/results", exist_ok=True)
+        os.makedirs("/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/prediction", exist_ok=True)
 
     def cleanup(self):
-        shutil.rmtree("/opt/algorithm/data")
-        shutil.rmtree("/opt/algorithm/results")
-        shutil.rmtree("/opt/algorithm/prediction")
-
-    def predict(self, input_data):
-        """
-        Input   input_data, dict.
-                The dictionary contains 3 images and 3 json files.
-                keys:  'dwi_image' , 'adc_image', 'flair_image',
-                        'dwi_json', 'adc_json', 'flair_json'
-
-        Output  prediction, array.
-                Binary mask encoding the lesion segmentation (0 background, 1 foreground).
-        """
-        # Get all image inputs.
-        dwi_image, adc_image, flair_image = (
-            input_data["dwi_image"],
-            input_data["adc_image"],
-            input_data["flair_image"],
-        )
-
-        # Get all json inputs.
-        dwi_json, adc_json, flair_json = (
-            input_data["dwi_json"],
-            input_data["adc_json"],
-            input_data["flair_json"],
-        )
-
-        self.setup()
-
-        ################################################################################################################
-        #################################### Beginning of your prediction method. ######################################
-
-        dwi_image_rs = self.reslice(dwi_image, reference=flair_image)
-        adc_image_rs = self.reslice(adc_image, reference=flair_image)
-        flair_image_rs = self.reslice(flair_image, reference=flair_image)
-        dwi_image_1mm = self.reslice(dwi_image_rs)
-        adc_image_1mm = self.reslice(adc_image_rs)
-        flair_image_1mm = self.reslice(flair_image_rs)
-
-        dwi_image_data = SimpleITK.GetArrayFromImage(dwi_image_1mm)
-        adc_image_data = SimpleITK.GetArrayFromImage(adc_image_1mm)
-        flair_image_data = SimpleITK.GetArrayFromImage(flair_image_1mm)
-
-        img = np.stack([adc_image_data, dwi_image_data, flair_image_data], axis=-1)
-        stack_image = SimpleITK.GetImageFromArray(img, isVector=True)
-        stack_image.SetOrigin(flair_image_1mm.GetOrigin()), stack_image.SetSpacing(
-            flair_image_1mm.GetSpacing()
-        ), stack_image.SetDirection(flair_image_1mm.GetDirection())
-
-        self.nnunet_preprocess(stack_image)
-
-        for args_ in self.args:
-            self.nnunet_infer(args_)
-
-        paths = [
-            os.path.join("/opt/algorithm/prediction", str(i), "ISLES2022_0001.npy")
-            for i in range(len(self.args))
-        ]
-        prediction = self.nnunet_ensemble(paths, ref=flair_image_1mm)
-
-        pred_crf = SimpleITK.GetArrayFromImage(prediction)
-        pred_crf = np.stack([1.0 - pred_crf, pred_crf])
-        img_crf = SimpleITK.GetArrayFromImage(stack_image)
-        img_crf = img_crf - img_crf.min(axis=(0, 1, 2))
-        img_crf = 255 * (img_crf / img_crf.max(axis=(0, 1, 2)))
-        img_crf[img_crf < 0] = 0
-        img_crf[img_crf > 255] = 255
-        img_crf = np.asarray(img_crf, np.uint8)
-        pred_crf = np.asarray(pred_crf, np.float32)
-        #        prediction = self.crf(img_crf, pred_crf)
-        prediction = pred_crf
-        prediction = prediction[1]
-        prediction = SimpleITK.GetImageFromArray(prediction)
-
-        prediction.SetOrigin(dwi_image_1mm.GetOrigin()), prediction.SetSpacing(
-            dwi_image_1mm.GetSpacing()
-        ), prediction.SetDirection(dwi_image_1mm.GetDirection())
-
-        prediction = self.reslice(prediction, reference=dwi_image_rs)
-        prediction = self.reslice(prediction, reference=dwi_image)
-
-        prediction = SimpleITK.GetArrayFromImage(prediction)
-
-        prediction[prediction > 1] = 0
-
-        prediction = prediction > 0.5
-
-        #        prediction = remove_small_holes(prediction, 10, 1)
-        #        prediction = remove_small_objects(prediction, 2, 1)
-
-        self.cleanup()
-
-        #################################### End of your prediction method. ############################################
-        ################################################################################################################
-
-        return prediction.astype(int)
-
-    def process_isles_case(self, input_data, input_filename):
-        # Get origin, spacing and direction from the DWI image.
-        origin, spacing, direction = (
-            input_data["dwi_image"].GetOrigin(),
-            input_data["dwi_image"].GetSpacing(),
-            input_data["dwi_image"].GetDirection(),
-        )
-
-        # Segment images.
-        prediction = self.predict(input_data)  # function you need to update!
-
-        # Build the itk object.
-        output_image = SimpleITK.GetImageFromArray(prediction)
-        output_image.SetOrigin(origin), output_image.SetSpacing(
-            spacing
-        ), output_image.SetDirection(direction)
-
-        # Write segmentation to output location.
-        if not self._algorithm_output_path.exists():
-            os.makedirs(str(self._algorithm_output_path))
-        output_image_path = self._algorithm_output_path / input_filename
-        SimpleITK.WriteImage(output_image, str(output_image_path))
-
-        # Write segmentation file to json.
-        if output_image_path.exists():
-            json_result = {
-                "outputs": [
-                    dict(
-                        type="Image",
-                        slug="stroke-lesion-segmentation",
-                        filename=str(output_image_path.name),
-                    )
-                ],
-                "inputs": [
-                    dict(type="Image", slug="dwi-brain-mri", filename=input_filename)
-                ],
-            }
-
-            self._case_results.append(json_result)
-            self.save()
-
-    def load_isles_case(self):
-        """Loads the 6 inputs of ISLES22 (3 MR images, 3 metadata json files accompanying each MR modality).
-        Note: Cases missing the metadata will still have a json file, though their fields will be empty."""
-
-        # Get MR data paths.
-        dwi_image_path = self.get_file_path(slug="dwi-brain-mri", filetype="image")
-        adc_image_path = self.get_file_path(slug="adc-brain-mri", filetype="image")
-        flair_image_path = self.get_file_path(slug="flair-brain-mri", filetype="image")
-
-        # Get MR metadata paths.
-        dwi_json_path = self.get_file_path(
-            slug="dwi-mri-acquisition-parameters", filetype="json"
-        )
-        adc_json_path = self.get_file_path(slug="adc-mri-parameters", filetype="json")
-        flair_json_path = self.get_file_path(
-            slug="flair-mri-acquisition-parameters", filetype="json"
-        )
-
-        input_data = {
-            "dwi_image": SimpleITK.ReadImage(str(dwi_image_path)),
-            "dwi_json": json.load(open(dwi_json_path)),
-            "adc_image": SimpleITK.ReadImage(str(adc_image_path)),
-            "adc_json": json.load(open(adc_json_path)),
-            "flair_image": SimpleITK.ReadImage(str(flair_image_path)),
-            "flair_json": json.load(open(flair_json_path)),
-        }
-
-        # Set input information.
-        input_filename = str(dwi_image_path).split("/")[-1]
-        return input_data, input_filename
-
-    def get_file_path(self, slug, filetype="image"):
-        """Gets the path for each MR image/json file."""
-
-        if filetype == "image":
-            file_list = list((self._input_path / "images" / slug).glob("*.mha"))
-        elif filetype == "json":
-            file_list = list(self._input_path.glob("*{}.json".format(slug)))
-
-        # Check that there is a single file to load.
-        if len(file_list) != 1:
-            print("Loading error")
-        else:
-            return file_list[0]
-
-    def save(self):
-        with open(str(self._output_file), "w") as f:
-            json.dump(self._case_results, f)
+        shutil.rmtree("/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/data", ignore_errors=True)
+        shutil.rmtree("/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/results", ignore_errors=True)
+        shutil.rmtree("/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/prediction", ignore_errors=True)
 
     def process(self):
-        input_data, input_filename = self.load_isles_case()
-        self.process_isles_case(input_data, input_filename)
+        inp_path = self._input_path  # Path for the input
+        out_path = self._output_path # Path for the output
+        file_list = os.listdir(inp_path)  # List of files in the input
+        file_list = [os.path.join(inp_path, f) for f in file_list]
+        for fil in file_list:
+            # dat, hdr = medpy.io.load(fil)  # dat is a numpy array
+            # im_shape = dat.shape
+            # dat = dat.reshape(1, 1, *im_shape)  # reshape to Pytorch standard
+            # # Convert 'dat' to Tensor, or as appropriate for your model.
+            # ###########
+            # ### Replace this section with the call to your code.
+            # mean_dat = np.mean(dat)
+            # dat[dat > mean_dat] = 1
+            # dat[dat <= mean_dat] = 0
+            # ###
+            # ###########
+            # dat = dat.reshape(*im_shape)
+            # out_name = os.path.basename(fil)
+            # out_filepath = os.path.join(out_path, out_name)
+            # print(f"=== saving {out_filepath} from {fil} ===")
+            # medpy.io.save(dat, out_filepath, hdr=hdr)
+
+            t1w_image_1mm = SimpleITK.ReadImage(str(fil))
+            # t1w_image_1mm = self.reslice(t1w_image)
+
+            t1w_image_ref = t1w_image_1mm[...,0]
+
+            # t1w_ss, t1w_mask = self.robex(t1w_image_1mm)
+            # t1w_image_n4ss = self.n4(t1w_ss, t1w_mask)
+
+            self.nnunet_preprocess(t1w_image_1mm)
+
+            for args_ in self.args:
+                self.nnunet_infer(args_)
+
+            paths = [
+                os.path.join(
+                    "/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/prediction", str(i), "BraTS2021_0001.npy"
+                )
+                for i in range(len(self.args))
+            ]
+            prediction = self.nnunet_ensemble(paths, ref=t1w_image_ref)
+
+            pred_crf = SimpleITK.GetArrayFromImage(prediction)
+            # pred_crf = np.stack([1.0 - pred_crf, pred_crf])
+            # img_crf = SimpleITK.GetArrayFromImage(t1w_image_1mm)
+            # # img_crf = img_crf - img_crf.min(axis=(0, 1, 2))
+            # # img_crf = 255 * (img_crf / img_crf.max(axis=(0, 1, 2)))
+            # img_crf[img_crf < 0] = 0
+            # img_crf[img_crf > 255] = 255
+            # img_crf = np.asarray(img_crf, np.uint8)
+            # pred_crf = np.asarray(pred_crf, np.float32)
+            # # prediction = self.crf(img_crf, pred_crf)
+            prediction = pred_crf
+            pred = prediction
+
+            pred = pred > 0.5
+
+            # pred = remove_small_holes(pred, 50, 3)
+            # pred = remove_small_objects(pred, 25, 3)
+
+            self.cleanup()
+
+            pred = np.argmax(pred, axis=-1)
+            pred = pred.astype(int)
+
+            prediction = SimpleITK.GetImageFromArray(pred)
+            prediction.SetOrigin(t1w_image_ref.GetOrigin())
+            prediction.SetSpacing(t1w_image_ref.GetSpacing())
+            prediction.SetDirection(t1w_image_ref.GetDirection())
+
+            out_name = os.path.basename(fil)
+            out_filepath = os.path.join(out_path, out_name)
+            print(f"=== saving {out_filepath} from {fil} ===")
+
+            SimpleITK.WriteImage(prediction, out_filepath)
+
+        return
 
 
 if __name__ == "__main__":
-    # todo change with your team-name
+    pathlib.Path("/home/lchalcroft/mdunet/lka_paper_dockers/brats/swin/tumour-segmentation").mkdir(
+        parents=True, exist_ok=True
+    )
     ploras().process()

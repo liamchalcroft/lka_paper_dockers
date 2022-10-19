@@ -5,9 +5,9 @@ import json
 import os
 from pathlib import Path
 
-DEFAULT_INPUT_PATH = Path("/input")
-DEFAULT_ALGORITHM_OUTPUT_IMAGES_PATH = Path("/output/images/")
-DEFAULT_ALGORITHM_OUTPUT_FILE_PATH = Path("/output/results.json")
+DEFAULT_INPUT_PATH = Path("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde")
+DEFAULT_ALGORITHM_OUTPUT_IMAGES_PATH = Path("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde")
+DEFAULT_ALGORITHM_OUTPUT_FILE_PATH = Path("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/tumour-segmentation/results.json")
 
 import torch
 from nnunet.nn_unet import NNUnet
@@ -24,6 +24,7 @@ from data_loading.data_module import DataModule
 from copy import deepcopy
 import shutil
 from skimage.morphology import remove_small_objects, remove_small_holes
+import pathlib
 
 import logging
 
@@ -38,16 +39,16 @@ class ploras:
         output_path: Path = DEFAULT_ALGORITHM_OUTPUT_IMAGES_PATH,
     ):
 
-        self.debug = False  # False for running the docker!
+        self.debug = True  # False for running the docker!
         if self.debug:
             self._input_path = Path(
-                "/home/lchalcroft/mdunet/miccai22_dockers/docker-isles/test/"
+                "/home/lchalcroft/mdunet/data/BraTS2021_val/images"
             )
             self._output_path = Path(
-                "/home/lchalcroft/mdunet/miccai22_dockers/docker-isles/output/"
+                "/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/tumour-segmentation"
             )
             self._algorithm_output_path = (
-                self._output_path / "stroke-lesion-segmentation"
+                self._output_path / "tumour-segmentation"
             )
             self._output_file = self._output_path / "results.json"
             self._case_results = []
@@ -67,11 +68,11 @@ class ploras:
 
         args = SimpleNamespace(
             exec_mode="predict",
-            data="/opt/algorithm/data/11_3d/test",
-            results="/opt/algorithm/results",
-            config="/opt/algorithm/config/config.pkl",
+            data="/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/data/11_3d/test",
+            results="/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/results",
+            config="/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/configs/config.pkl",
             logname="ploras",
-            task="15",
+            task="11",
             gpus=1,
             nodes=1,
             learning_rate=0.0002,
@@ -82,7 +83,7 @@ class ploras:
             wandb_logs=False,
             wandb_project="brats",
             brats=False,
-            deep_supervision=True,
+            deep_supervision=False,
             more_chn=False,
             invert_resampled_y=False,
             amp=True,
@@ -94,7 +95,7 @@ class ploras:
             skip_first_n_eval=500,
             val_epochs=10,
             ckpt_path=None,
-            ckpt_store_dir="/opt/algorithm/checkpoints/",
+            ckpt_store_dir="/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/checkpoints/",
             fold=0,
             patience=100,
             batch_size=4,
@@ -132,16 +133,16 @@ class ploras:
             tpus=0,
         )
 
-        self.model_paths = ["/opt/algorithm/checkpoints/0/last.ckpt"]
+        self.model_paths = ["/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/checkpoints/0/last.ckpt"]
         self.args = []
         for i, pth in enumerate(self.model_paths):
             ckpt = torch.load(pth, map_location=self.device)
             ckpt["hyper_parameters"]["args"] = deepcopy(args)
             ckpt["hyper_parameters"][
                 "args"
-            ].ckpt_store_dir = "/opt/algorithm/checkpoints/" + str(i)
+            ].ckpt_store_dir = "/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/checkpoints/" + str(i)
             ckpt["hyper_parameters"]["args"].ckpt_path = (
-                "/opt/algorithm/checkpoints/" + str(i) + "/best.ckpt"
+                "/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/checkpoints/" + str(i) + "/last.ckpt"
             )
             ckpt["hyper_parameters"]["args"].fold = i
             ckpt["hyper_parameters"]["args"].gpus = 1
@@ -197,36 +198,36 @@ class ploras:
         return out
 
     def nnunet_preprocess(self, image):
-        os.makedirs("/opt/algorithm/data/ATLAS2022_ss/imagesTs/", exist_ok=True)
+        os.makedirs(os.path.join("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde", "data/BraTS2021_train/imagesTs/"), exist_ok=True)
         SimpleITK.WriteImage(
             image,
-            str("/opt/algorithm/data/ATLAS2022_ss/imagesTs/ATLAS2022_ss_0001.nii.gz"),
+            str(os.path.join("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde", "data/BraTS2021_train/imagesTs/BraTS2021_0001.nii.gz")),
         )
         data_desc = {
             "description": "Stroke Lesion Segmentation",
-            "labels": {"0": "Background", "1": "Lesion"},
+            "labels": {"0": "background", "1": "edema", "2": "non-enhancing tumor", "3": "enhancing tumour"},
             "licence": "BLANK",
-            "modality": {"0": "T1"},
-            "name": "ATLAS2022_ss",
+            "modality": {"0": "FLAIR", "1": "T1", "2": "T1CE", "3": "T2"},
+            "name": "BraTS2021_train",
             "numTest": 1,
             "numTraining": 0,
             "reference": "BLANK",
             "release": "BLANK",
             "tensorImageSize": "4D",
             "test": [
-                "/opt/algorithm/data/ATLAS2022_ss/imagesTs/ATLAS2022_ss_0001.nii.gz",
+                os.path.join("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde", "data/BraTS2021_train/imagesTs/BraTS2021_0001.nii.gz")
             ],
             "training": [],
         }
-        with open("/opt/algorithm/data/ATLAS2022_ss/dataset.json", "w") as f:
+        with open(os.path.join("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde", "data/BraTS2021_train/dataset.json"), "w") as f:
             json.dump(data_desc, f)
         args = SimpleNamespace(
-            data="/opt/algorithm/data",
-            results="/opt/algorithm/data",
+            data="/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/data",
+            results="/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/data",
             exec_mode="test",
-            ohe=False,
+            ohe=True,
             verbose=False,
-            task="16",
+            task="11",
             dim=3,
             n_jobs=1,
         )
@@ -262,7 +263,7 @@ class ploras:
             enable_progress_bar=False,
             enable_model_summary=False,
         )
-        save_dir = os.path.join("/opt/algorithm/prediction", str(args.fold))
+        save_dir = os.path.join("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/prediction", str(args.fold))
         model.save_dir = save_dir
         os.makedirs(save_dir, exist_ok=True)
         model.args = args
@@ -275,26 +276,27 @@ class ploras:
 
     def nnunet_ensemble(self, paths, ref):
         preds = [np.load(f) for f in paths]
-        pred = np.mean(preds, 0)[1]
-        pred_image = SimpleITK.GetImageFromArray(pred)
+        pred = np.mean(preds, 0)
+        pred = np.transpose(pred, (1,2,3,0))
+        pred_image = SimpleITK.GetImageFromArray(pred, isVector=True)
         pred_image.SetOrigin(ref.GetOrigin())
         pred_image.SetSpacing(ref.GetSpacing())
         pred_image.SetDirection(ref.GetDirection())
         return pred_image
 
     def setup(self):
-        os.makedirs("/opt/algorithm/data", exist_ok=True)
-        os.makedirs("/opt/algorithm/results", exist_ok=True)
-        os.makedirs("/opt/algorithm/prediction", exist_ok=True)
+        os.makedirs("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/data", exist_ok=True)
+        os.makedirs("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/results", exist_ok=True)
+        os.makedirs("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/prediction", exist_ok=True)
 
     def cleanup(self):
-        shutil.rmtree("/opt/algorithm/data", ignore_errors=True)
-        shutil.rmtree("/opt/algorithm/results", ignore_errors=True)
-        shutil.rmtree("/opt/algorithm/prediction", ignore_errors=True)
+        shutil.rmtree("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/data", ignore_errors=True)
+        shutil.rmtree("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/results", ignore_errors=True)
+        shutil.rmtree("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/prediction", ignore_errors=True)
 
     def process(self):
-        inp_path = loader_settings["InputPath"]  # Path for the input
-        out_path = loader_settings["OutputPath"]  # Path for the output
+        inp_path = self._input_path  # Path for the input
+        out_path = self._output_path # Path for the output
         file_list = os.listdir(inp_path)  # List of files in the input
         file_list = [os.path.join(inp_path, f) for f in file_list]
         for fil in file_list:
@@ -315,51 +317,54 @@ class ploras:
             # print(f"=== saving {out_filepath} from {fil} ===")
             # medpy.io.save(dat, out_filepath, hdr=hdr)
 
-            t1w_image = SimpleITK.ReadImage(str(fil))
-            t1w_image_1mm = self.reslice(t1w_image)
+            t1w_image_1mm = SimpleITK.ReadImage(str(fil))
+            # t1w_image_1mm = self.reslice(t1w_image)
 
-            t1w_ss, t1w_mask = self.robex(t1w_image_1mm)
-            t1w_image_n4ss = self.n4(t1w_ss, t1w_mask)
+            t1w_image_ref = t1w_image_1mm[...,0]
 
-            self.nnunet_preprocess(t1w_image_n4ss)
+            # t1w_ss, t1w_mask = self.robex(t1w_image_1mm)
+            # t1w_image_n4ss = self.n4(t1w_ss, t1w_mask)
+
+            self.nnunet_preprocess(t1w_image_1mm)
 
             for args_ in self.args:
                 self.nnunet_infer(args_)
 
             paths = [
                 os.path.join(
-                    "/opt/algorithm/prediction", str(i), "ATLAS2022_ss_0001.npy"
+                    "/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/prediction", str(i), "BraTS2021_0001.npy"
                 )
                 for i in range(len(self.args))
             ]
-            prediction = self.nnunet_ensemble(paths, ref=t1w_image_n4ss)
+            prediction = self.nnunet_ensemble(paths, ref=t1w_image_ref)
 
             pred_crf = SimpleITK.GetArrayFromImage(prediction)
-            pred_crf = np.stack([1.0 - pred_crf, pred_crf])
-            img_crf = SimpleITK.GetArrayFromImage(t1w_image_n4ss)[..., None]
-            img_crf = img_crf - img_crf.min(axis=(0, 1, 2))
-            img_crf = 255 * (img_crf / img_crf.max(axis=(0, 1, 2)))
-            img_crf[img_crf < 0] = 0
-            img_crf[img_crf > 255] = 255
-            img_crf = np.asarray(img_crf, np.uint8)
-            pred_crf = np.asarray(pred_crf, np.float32)
-            # prediction = self.crf(img_crf, pred_crf)
+            # pred_crf = np.stack([1.0 - pred_crf, pred_crf])
+            # img_crf = SimpleITK.GetArrayFromImage(t1w_image_1mm)
+            # # img_crf = img_crf - img_crf.min(axis=(0, 1, 2))
+            # # img_crf = 255 * (img_crf / img_crf.max(axis=(0, 1, 2)))
+            # img_crf[img_crf < 0] = 0
+            # img_crf[img_crf > 255] = 255
+            # img_crf = np.asarray(img_crf, np.uint8)
+            # pred_crf = np.asarray(pred_crf, np.float32)
+            # # prediction = self.crf(img_crf, pred_crf)
             prediction = pred_crf
-            pred = prediction[1]
+            pred = prediction
 
-            pred = pred > 0.51
+            pred = pred > 0.5
 
             # pred = remove_small_holes(pred, 50, 3)
             # pred = remove_small_objects(pred, 25, 3)
 
             self.cleanup()
 
+            pred = np.argmax(pred, axis=-1)
             pred = pred.astype(int)
 
             prediction = SimpleITK.GetImageFromArray(pred)
-            prediction.SetOrigin(t1w_image.GetOrigin())
-            prediction.SetSpacing(t1w_image.GetSpacing())
-            prediction.SetDirection(t1w_image.GetDirection())
+            prediction.SetOrigin(t1w_image_ref.GetOrigin())
+            prediction.SetSpacing(t1w_image_ref.GetSpacing())
+            prediction.SetDirection(t1w_image_ref.GetDirection())
 
             out_name = os.path.basename(fil)
             out_filepath = os.path.join(out_path, out_name)
@@ -371,7 +376,7 @@ class ploras:
 
 
 if __name__ == "__main__":
-    pathlib.Path("/output/images/stroke-lesion-segmentation/").mkdir(
+    pathlib.Path("/home/lchalcroft/mdunet/lka_paper_dockers/brats/mde/tumour-segmentation").mkdir(
         parents=True, exist_ok=True
     )
     ploras().process()
