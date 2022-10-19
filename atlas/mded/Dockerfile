@@ -22,6 +22,7 @@ RUN pip install --disable-pip-version-check --user -r requirements.txt
 RUN pip install --extra-index-url https://developer.download.nvidia.com/compute/redist/ nvidia-dali-cuda110==1.16.0
 
 COPY --chown=algorithm:algorithm process.py /opt/algorithm/
+COPY --chown=algorithm:algorithm settings.py /opt/algorithm/
 COPY --chown=algorithm:algorithm ../../src/nnunet /opt/algorithm/nnunet
 COPY --chown=algorithm:algorithm ../../src/grandchallenges /opt/algorithm/grandchallenges
 COPY --chown=algorithm:algorithm ../../src/utils /opt/algorithm/utils
