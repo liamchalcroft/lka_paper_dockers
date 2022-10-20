@@ -143,11 +143,13 @@ class ploras:
         for i, pth in enumerate(self.model_paths):
             ckpt = torch.load(pth, map_location=self.device)
             ckpt["hyper_parameters"]["args"] = deepcopy(args)
+            for key in args.keys():
+                ckpt["hyper_parameters"]["args"][key] = args[key]
             ckpt["hyper_parameters"][
                 "args"
             ].ckpt_store_dir = "/opt/algorithm/checkpoints/" + str(i)
             ckpt["hyper_parameters"]["args"].ckpt_path = (
-                "/opt/algorithm/checkpoints/" + str(i) + "/best.ckpt"
+                "/opt/algorithm/checkpoints/" + str(i) + "/last.ckpt"
             )
             ckpt["hyper_parameters"]["args"].fold = i
             ckpt["hyper_parameters"]["args"].gpus = 1
