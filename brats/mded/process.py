@@ -82,7 +82,7 @@ class ploras:
             tb_logs=False,
             wandb_logs=False,
             wandb_project="brats",
-            brats=False,
+            brats=True,
             deep_supervision=False,
             more_chn=False,
             invert_resampled_y=False,

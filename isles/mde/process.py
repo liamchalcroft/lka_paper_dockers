@@ -82,7 +82,7 @@ class ploras:
             wandb_logs=False,
             wandb_project="isles",
             brats=False,
-            deep_supervision=True,
+            deep_supervision=False,
             more_chn=False,
             invert_resampled_y=False,
             amp=True,
@@ -136,9 +136,11 @@ class ploras:
         self.args = []
         for i, pth in enumerate(self.model_paths):
             ckpt = torch.load(pth, map_location=self.device)
-            ckpt["hyper_parameters"]["args"] = deepcopy(args)
-            for key in args.keys():
-                ckpt["hyper_parameters"]["args"][key] = args[key]
+            d = vars(ckpt["hyper_parameters"]["args"])
+            da = vars(args)
+            for k in da.keys():
+                d[k] = da[k]
+            
             ckpt["hyper_parameters"][
                 "args"
             ].ckpt_store_dir = "/opt/algorithm/checkpoints/" + str(i)
@@ -225,7 +227,7 @@ class ploras:
             data="/opt/algorithm/data",
             results="/opt/algorithm/data",
             exec_mode="test",
-            ohe=False,
+            ohe=True,
             verbose=False,
             task="15",
             dim=3,
